@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-slate-950">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Helios Pro - Dimensionamiento Solar Fotovoltaico</title>
+
+    <!-- Manifest PWA / Mobile -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <!-- Estilos y Dependencias CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                        },
+                        corporate: {
+                            800: '#0f172a',
+                            900: '#020617',
+                            card: '#0f172a80',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .glass-card:hover {
+            border-color: rgba(16, 185, 129, 0.3);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(51, 65, 85, 0.8);
+            border-radius: 4px;
+        }
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white !important; color: black !important; }
+            .glass-panel, .glass-card { background: white !important; border: 1px solid #ccc !important; color: black !important; }
+        }
+    </style>
+</head>
+<body class="text-slate-200 antialiased h-full flex flex-col font-sans selection:bg-brand-500 selection:text-white">
+
+    <!-- Top Corporate Header -->
+    <header class="bg-slate-900/90 border-b border-slate-800 sticky top-0 z-50 backdrop-blur-md no-print">
+        <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            
+            <!-- Logo & Brand -->
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-emerald-400 flex items-center justify-center shadow-lg shadow-brand-500/20">
+                    <i class="fa-solid fa-solar-panel text-slate-950 font-bold text-lg"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="font-bold text-base tracking-wide text-white">HELIOS <span class="text-brand-500 font-light">PRO</span></h1>
+                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-medium border border-slate-700">v3.4 Mobile</span>
+                    </div>
+                    <p class="text-xs text-slate-400 hidden sm:block">Ingeniería & Evaluación Financiera Solar (CREG 174 / Ley 1715)</p>
+                </div>
+            </div>
+
+            <!-- Actions Toolbar -->
+            <div class="flex items-center gap-2 sm:gap-3">
+                <button onclick="SolarApp.saveToStorage()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-300 font-medium transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-floppy-disk text-slate-400"></i> <span class="hidden sm:inline">Guardar</span>
+                </button>
+                <button onclick="SolarApp.exportJSON()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-300 font-medium transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-file-export text-slate-400"></i> <span class="hidden sm:inline">Exportar</span>
+                </button>
+                <label class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-300 font-medium transition cursor-pointer flex items-center gap-1.5">
+                    <i class="fa-solid fa-file-import text-slate-400"></i> <span class="hidden sm:inline">Cargar</span>
+                    <input type="file" id="importJsonInput" accept=".json" class="hidden" onchange="SolarApp.importJSON(event)">
+                </label>
+                <button onclick="window.print()" class="px-3 py-1.5 rounded-lg bg-gradient-to-r from-brand-600 to-emerald-500 text-slate-950 font-semibold text-xs transition shadow-md hover:brightness-110 flex items-center gap-1.5">
+                    <i class="fa-solid fa-print"></i> <span class="hidden sm:inline">Reporte</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace Layout -->
+    <main class="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- LEFT SIDEBAR: CONTROLES Y PARÁMETROS -->
+        <aside class="lg:col-span-4 space-y-5 no-print">
+            <div class="glass-panel p-5 rounded-2xl shadow-xl space-y-6">
+                
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <h2 class="text-sm font-semibold text-white tracking-wider flex items-center gap-2">
+                        <i class="fa-sliders fa-solid text-brand-500"></i> Parámetros del Proyecto
+                    </h2>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">RETIE Compliant</span>
+                </div>
+
+                <!-- Entrada de Parámetros -->
+                <div class="space-y-4">
+                    
+                    <!-- 1. UBICACIÓN Y RECURSO SOLAR -->
+                    <div class="glass-card p-4 rounded-xl space-y-3">
+                        <label class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                            <i class="fa-solid fa-location-dot text-amber-400"></i> 1. Ubicación y HPS
+                        </label>
+                        <div>
+                            <select id="departmentSelect" onchange="SolarApp.onDepartmentChange()" class="w-full bg-slate-900 border border-slate-700/80 rounded-lg p-2.5 text-xs text-slate-200 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition outline-none">
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="text-[11px] text-slate-400 block mb-1">HSP Base (kWh/m²/d)</label>
+                                <input type="number" id="hspInput" readonly class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs font-bold text-slate-400 text-center">
+                            </div>
+                            <div>
+                                <label class="text-[11px] text-slate-400 block mb-1">HSP Manual (Ajuste)</label>
+                                <input type="number" id="customHspInput" step="0.1" min="1.0" max="8.0" placeholder="Ej: 4.8" oninput="SolarApp.calculate()" class="w-full bg-slate-900 border border-slate-700/80 rounded-lg p-2 text-xs text-slate-200 focus:border-brand-500 outline-none text-center">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. DATOS TÉCNICOS Y CONSUMO -->
+                    <div class="glass-card p-4 rounded-xl space-y-3">
+                        <label class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                            <i class="fa-solid fa-bolt text-brand-500"></i> 2. Datos Consumo & Sistema
+                        </label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="text-[11px] text-slate-400 block mb-1">Consumo (kWh/mes)</label>
+                                <input type="number" id="monthlyKwhInput" value="450" min="1" oninput="SolarApp.calculate()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white focus:border-brand-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="text-[11px] text-slate-400 block mb-1">Tarifa CU ($/kWh)</label>
+                                <input type="number" id="electricityRateInput" value="920" min="1" oninput="SolarApp.calculate()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white focus:border-brand-500 outline-none">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="text-[11px] text-slate-400 block mb-1">Costo Gen. Cg ($/kWh)</label>
+                                <input type="number" id="generationCostInput" value="380" min="1" oninput="SolarApp.calculate()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white focus:border-brand-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="text-[11px] text-slate-400 block mb-1">Tipo de Sistema</label>
+                                <select id="systemTypeSelect" onchange="SolarApp.calculate()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white focus:border-brand-500 outline-none">
+                                    <option value="ongrid">Interconectado Red (On-Grid)</option>
+                                    <option value="zeroexport">On-Grid Cero Inyección</option>
+                                    <option value="hybrid">Híbrido (Red + Baterías)</option>
+                                    <option value="offgrid">Aislado (Off-Grid)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="text-[11px] text-slate-400 block mb-1">Potencia Panel (Wp)</label>
+                                <input type="number" id="panelWattageInput" value="570" step="5" min="100" oninput="SolarApp.calculate()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white focus:border-brand-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="text-[11px] text-slate-400 block mb-1">Eficiencia Inv. (%)</label>
+                                <input type="number" id="inverterEfficiencyInput" value="97.5" step="0.1" min="80" max="100" oninput="SolarApp.calculate()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white focus:border-brand-500 outline-none">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 pt-1 border-t border-slate-800">
+                            <div>
+                                <label class="text-[11px] text-slate-400 block mb-1">Distancia DC (m)</label>
+                                <input type="number" id="dcDistanceInput" value="25" min="1" oninput="SolarApp.calculate()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white">
+                            </div>
+                            <div>
+                                <label class="text-[11px] text-slate-400 block mb-1">Distancia AC (m)</label>
+                                <input type="number" id="acDistanceInput" value="15" min="1" oninput="SolarApp.calculate()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white">
+                            </div>
+                        </div>
+                        <div id="batterySection" class="hidden pt-2 border-t border-amber-500/20">
+                            <label class="text-[11px] font-semibold text-amber-400 block mb-1">Autonomía Baterías (Días)</label>
+                            <input type="number" id="autonomyDaysInput" value="1.0" step="0.5" min="0.5" max="5" oninput="SolarApp.calculate()" class="w-full bg-slate-900 border border-amber-500/40 rounded-lg p-2 text-xs text-amber-200">
+                        </div>
+                    </div>
+
+                    <!-- 3. FINANCIERO & LEY 1715 -->
+                    <div class="glass-card p-4 rounded-xl space-y-4 border border-brand-500/20">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-2">
+                                <span class="text-amber-400 text-sm">🪙</span> 3. Financiero & Ley 1715 / 2099
+                            </h3>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[11px] font-medium text-slate-300 mb-1">Inflación Tarifa Anual (%)</label>
+                                <input type="number" id="inflationInput" value="7.5" step="0.1" oninput="SolarApp.calculate()" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs font-semibold text-white focus:border-brand-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-medium text-slate-300 mb-1">Degradación Anual PV (%)</label>
+                                <input type="number" id="pvDegradationInput" value="0.5" step="0.1" oninput="SolarApp.calculate()" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs font-semibold text-white focus:border-brand-500 outline-none">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[11px] font-medium text-slate-300 mb-1">Tasa Descuento WACC (%)</label>
+                                <input type="number" id="waccInput" value="10.0" step="0.1" oninput="SolarApp.calculate()" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs font-semibold text-white focus:border-brand-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-medium text-slate-300 mb-1">Tasa Impuesto Renta (%)</label>
+                                <input type="number" id="taxRateInput" value="35.0" step="0.1" oninput="SolarApp.calculate()" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs font-semibold text-white focus:border-brand-500 outline-none">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[11px] font-medium text-slate-300 mb-1">Mano de Obra (%)</label>
+                                <input type="number" id="laborPercentInput" value="18" step="1" oninput="SolarApp.calculate()" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs font-semibold text-white focus:border-brand-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-medium text-slate-300 mb-1">Ingeniería / RETIE (%)</label>
+                                <input type="number" id="engineeringPercentInput" value="7" step="1" oninput="SolarApp.calculate()" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs font-semibold text-white focus:border-brand-500 outline-none">
+                            </div>
+                        </div>
+
+                        <div class="space-y-3 pt-2 border-t border-slate-800">
+                            <label class="flex items-start gap-2.5 cursor-pointer group">
+                                <input type="checkbox" id="vatExemptionCheck" checked onchange="SolarApp.calculate()" class="mt-0.5 w-4 h-4 rounded bg-slate-900 border-slate-700 text-brand-500 focus:ring-brand-500 focus:ring-offset-slate-900">
+                                <span class="text-xs text-slate-300 group-hover:text-white leading-tight transition">Exención IVA (0%) en Paneles e Inversores (Ley 1715 / Ley 2099)</span>
+                            </label>
+
+                            <label class="flex items-start gap-2.5 cursor-pointer group">
+                                <input type="checkbox" id="incomeDeductionCheck" checked onchange="SolarApp.calculate()" class="mt-0.5 w-4 h-4 rounded bg-slate-900 border-slate-700 text-brand-500 focus:ring-brand-500 focus:ring-offset-slate-900">
+                                <span class="text-xs text-slate-300 group-hover:text-white leading-tight transition">Aplicar Deducción de Renta (50% de inversión en 5 años)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </aside>
+
+        <!-- RIGHT MAIN DASHBOARD -->
+        <section class="lg:col-span-8 space-y-6" id="printableArea">
+
+            <!-- KPIs Enterprise Metrics -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div class="glass-panel p-4 rounded-2xl relative overflow-hidden group border-l-4 border-l-brand-500">
+                    <p class="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Potencia Requerida</p>
+                    <p class="text-xl sm:text-2xl font-bold text-white mt-1" id="systemSizeKw">- kWp</p>
+                    <p class="text-xs text-slate-400 mt-0.5" id="panelCountText">- paneles</p>
+                </div>
+
+                <div class="glass-panel p-4 rounded-2xl relative overflow-hidden group border-l-4 border-l-amber-400">
+                    <p class="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Generación Estimada</p>
+                    <p class="text-xl sm:text-2xl font-bold text-amber-400 mt-1" id="monthlyGenerationKwh">- kWh/mes</p>
+                    <p class="text-xs text-emerald-400 font-medium mt-0.5" id="coveragePercentText">- % cobertura</p>
+                </div>
+
+                <div class="glass-panel p-4 rounded-2xl relative overflow-hidden group border-l-4 border-l-blue-500">
+                    <p class="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">CAPEX Total Est.</p>
+                    <p class="text-lg sm:text-xl font-bold text-white mt-1" id="totalInvestmentCost">$ -</p>
+                    <p class="text-xs text-slate-400 mt-0.5">Llave en Mano</p>
+                </div>
+
+                <div class="glass-panel p-4 rounded-2xl relative overflow-hidden group border-l-4 border-l-emerald-500">
+                    <p class="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Payback Simple</p>
+                    <p class="text-xl sm:text-2xl font-bold text-emerald-400 mt-1" id="paybackYearsText">- Años</p>
+                    <p class="text-xs text-slate-300 font-mono mt-0.5" id="vanText">VPN: $ -</p>
+                </div>
+            </div>
+
+            <!-- Dashboard Visual de Tablas y Gráficos -->
+            <div class="glass-panel rounded-2xl overflow-hidden shadow-2xl border border-slate-800">
+                
+                <!-- Tab Navigation Header -->
+                <div class="flex items-center border-b border-slate-800 bg-slate-900/60 p-1.5 no-print gap-1 overflow-x-auto">
+                    <button onclick="SolarApp.switchTab('visual')" id="tabBtn-visual" class="px-4 py-2 text-xs font-semibold rounded-xl text-brand-500 bg-brand-500/10 border border-brand-500/20 transition flex items-center gap-2 whitespace-nowrap">
+                        <i class="fa-solid fa-diagram-project"></i> Arquitectura Visual
+                    </button>
+                    <button onclick="SolarApp.switchTab('singleline')" id="tabBtn-singleline" class="px-4 py-2 text-xs font-semibold rounded-xl text-slate-400 hover:text-white transition flex items-center gap-2 whitespace-nowrap">
+                        <i class="fa-solid fa-bolt-lightning"></i> Unifilar RETIE
+                    </button>
+                    <button onclick="SolarApp.switchTab('bom')" id="tabBtn-bom" class="px-4 py-2 text-xs font-semibold rounded-xl text-slate-400 hover:text-white transition flex items-center gap-2 whitespace-nowrap">
+                        <i class="fa-solid fa-list-check"></i> Presupuesto & BOM
+                    </button>
+                    <button onclick="SolarApp.switchTab('finance')" id="tabBtn-finance" class="px-4 py-2 text-xs font-semibold rounded-xl text-slate-400 hover:text-white transition flex items-center gap-2 whitespace-nowrap">
+                        <i class="fa-solid fa-chart-line"></i> Proyección Financiera
+                    </button>
+                </div>
+
+                <!-- Tab Body Content -->
+                <div class="p-4 sm:p-6">
+                    
+                    <!-- TAB 1: ARQUITECTURA VISUAL -->
+                    <div id="tabContent-visual" class="tab-content space-y-4">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-sm font-semibold text-white tracking-wide">Diagrama de Bloques y Flujo Energético</h3>
+                        </div>
+                        <div class="w-full overflow-x-auto bg-slate-950/80 rounded-xl p-4 border border-slate-800/80 custom-scrollbar">
+                            <svg id="visualDiagramSvg" viewBox="0 0 900 320" class="w-full h-auto min-w-[700px]"></svg>
+                        </div>
+                    </div>
+
+                    <!-- TAB 2: UNIFILAR RETIE -->
+                    <div id="tabContent-singleline" class="tab-content hidden space-y-4">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-sm font-semibold text-white tracking-wide">Esquema Unifilar Bajo Norma RETIE</h3>
+                        </div>
+                        <div class="w-full overflow-x-auto bg-slate-950/80 rounded-xl p-4 border border-slate-800/80 custom-scrollbar">
+                            <svg id="singleLineDiagramSvg" viewBox="0 0 900 400" class="w-full h-auto min-w-[700px]"></svg>
+                        </div>
+                    </div>
+
+                    <!-- TAB 3: PRESUPUESTO & BOM -->
+                    <div id="tabContent-bom" class="tab-content hidden space-y-4">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="text-sm font-semibold text-white">Bill of Materials (BOM) & Desglose CAPEX</h3>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto rounded-xl border border-slate-800">
+                            <table class="w-full text-left text-xs border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-900/90 text-slate-300 font-semibold border-b border-slate-800">
+                                        <th class="p-3">Componente / Servicio</th>
+                                        <th class="p-3">Especificación Técnica</th>
+                                        <th class="p-3 text-center">Cant.</th>
+                                        <th class="p-3 text-right">Valor Unit. ($)</th>
+                                        <th class="p-3 text-right">Subtotal ($)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="bomTableBody" class="divide-y divide-slate-800/60 bg-slate-950/40 text-slate-300">
+                                </tbody>
+                                <tfoot>
+                                    <tr class="bg-slate-900/90 font-bold text-white border-t border-slate-700">
+                                        <td colspan="4" class="p-3 text-right">TOTAL INVERSIÓN (CAPEX):</td>
+                                        <td class="p-3 text-right text-emerald-400 text-sm font-mono" id="bomTotalText">$ 0</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- TAB 4: FINANCIERO CON GRÁFICO DIVERSIFICADO -->
+                    <div id="tabContent-finance" class="tab-content hidden space-y-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="text-sm font-semibold text-white">Retorno de Inversión y Beneficios Ley 1715</h3>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-950/60 p-4 rounded-xl border border-slate-800 h-64">
+                            <canvas id="financeChart"></canvas>
+                        </div>
+
+                        <div class="overflow-x-auto rounded-xl border border-slate-800 max-h-80 custom-scrollbar">
+                            <table class="w-full text-left text-xs border-collapse">
+                                <thead class="sticky top-0 bg-slate-900 border-b border-slate-800 text-slate-300 font-semibold">
+                                    <tr>
+                                        <th class="p-3">Año</th>
+                                        <th class="p-3">Ahorro Energía ($)</th>
+                                        <th class="p-3">Deducción Renta ($)</th>
+                                        <th class="p-3">OpEx / Mantenimiento ($)</th>
+                                        <th class="p-3 text-right">Flujo Neto ($)</th>
+                                        <th class="p-3 text-right">Flujo Acumulado ($)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="financeTableBody" class="divide-y divide-slate-800/60 bg-slate-950/40 text-slate-300 font-mono">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- SCRIPT MOTOR DE CÁLCULO -->
+    <script>
+        const colombiaDepartments = [
+            { id: "la_guajira", name: "La Guajira", hsp: 6.0 },
+            { id: "atlantico", name: "Atlántico", hsp: 5.3 },
+            { id: "bolivar", name: "Bolívar", hsp: 5.1 },
+            { id: "cesar", name: "Cesar", hsp: 5.2 },
+            { id: "magdalena", name: "Magdalena", hsp: 5.2 },
+            { id: "san_andres", name: "San Andrés y Providencia", hsp: 5.5 },
+            { id: "antioquia", name: "Antioquia", hsp: 4.3 },
+            { id: "arauca", name: "Arauca", hsp: 4.8 },
+            { id: "valle", name: "Valle del Cauca", hsp: 4.4 },
+            { id: "santander", name: "Santander", hsp: 4.6 },
+            { id: "norte_santander", name: "Norte de Santander", hsp: 4.7 },
+            { id: "cundinamarca", name: "Cundinamarca / Bogotá", hsp: 4.1 },
+            { id: "boyaca", name: "Boyacá", hsp: 4.2 },
+            { id: "caldas", name: "Caldas", hsp: 4.0 },
+            { id: "risaralda", name: "Risaralda", hsp: 4.1 },
+            { id: "quindio", name: "Quindío", hsp: 4.1 },
+            { id: "tolima", name: "Tolima", hsp: 4.6 },
+            { id: "huila", name: "Huila", hsp: 4.7 },
+            { id: "meta", name: "Meta", hsp: 4.4 },
+            { id: "casanare", name: "Casanare", hsp: 4.7 },
+            { id: "cauca", name: "Cauca", hsp: 4.2 },
+            { id: "narino", name: "Nariño", hsp: 4.0 },
+            { id: "cordoba", name: "Córdoba", hsp: 4.9 },
+            { id: "sucre", name: "Sucre", hsp: 5.0 }
+        ];
+
+        let chartInstance = null;
+
+        const SolarApp = (function () {
+            let state = {
+                systemSizeKw: 0,
+                panelCount: 0,
+                monthlyGen: 0,
+                totalCost: 0,
+                paybackYears: 0,
+                vpn: 0,
+                coveragePercent: 0,
+                bom: [],
+                cashFlow: []
+            };
+
+            function formatCOP(val) {
+                return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val);
+            }
+
+            return {
+                init: function () {
+                    this.populateDepartments();
+                    this.calculate();
+                },
+
+                populateDepartments: function () {
+                    const select = document.getElementById("departmentSelect");
+                    select.innerHTML = "";
+                    colombiaDepartments.forEach(dept => {
+                        const opt = document.createElement("option");
+                        opt.value = dept.id;
+                        opt.textContent = `${dept.name} (${dept.hsp} kWh/m²/d)`;
+                        select.appendChild(opt);
+                    });
+                    this.onDepartmentChange();
+                },
+
+                onDepartmentChange: function () {
+                    const select = document.getElementById("departmentSelect");
+                    const dept = colombiaDepartments.find(d => d.id === select.value);
+                    if (dept) {
+                        document.getElementById("hspInput").value = dept.hsp;
+                        this.calculate();
+                    }
+                },
+
+                calculate: function () {
+                    const hspBase = parseFloat(document.getElementById("hspInput").value) || 4.5;
+                    const hspCustom = parseFloat(document.getElementById("customHspInput").value);
+                    const hsp = (hspCustom && hspCustom > 0) ? hspCustom : hspBase;
+
+                    const monthlyKwh = parseFloat(document.getElementById("monthlyKwhInput").value) || 0;
+                    const rate = parseFloat(document.getElementById("electricityRateInput").value) || 0;
+                    const cgCost = parseFloat(document.getElementById("generationCostInput").value) || 0;
+                    const systemType = document.getElementById("systemTypeSelect").value;
+                    const panelWatts = parseFloat(document.getElementById("panelWattageInput").value) || 570;
+                    const inverterEff = (parseFloat(document.getElementById("inverterEfficiencyInput").value) || 97.5) / 100;
+
+                    const dcDistanceMeters = parseFloat(document.getElementById("dcDistanceInput").value) || 25;
+                    const acDistanceMeters = parseFloat(document.getElementById("acDistanceInput").value) || 15;
+                    const groundDistanceMeters = acDistanceMeters + 5;
+
+                    const inflation = (parseFloat(document.getElementById("inflationInput").value) || 7.5) / 100;
+                    const pvDegradation = (parseFloat(document.getElementById("pvDegradationInput").value) || 0.5) / 100;
+                    const wacc = (parseFloat(document.getElementById("waccInput").value) || 10.0) / 100;
+                    const taxRate = (parseFloat(document.getElementById("taxRateInput").value) || 35.0) / 100;
+                    const laborPercent = (parseFloat(document.getElementById("laborPercentInput").value) || 18) / 100;
+                    const engPercent = (parseFloat(document.getElementById("engineeringPercentInput").value) || 7) / 100;
+                    
+                    const vatExemption = document.getElementById("vatExemptionCheck").checked;
+                    const incomeDeduction = document.getElementById("incomeDeductionCheck").checked;
+
+                    document.getElementById("batterySection").classList.toggle("hidden", systemType !== "hybrid" && systemType !== "offgrid");
+
+                    const dailyKwhNeeded = (monthlyKwh / 30);
+                    const systemLosses = 0.20; 
+                    const requiredKwKwP = dailyKwhNeeded / (hsp * (1 - systemLosses) * inverterEff);
+
+                    const panelKwP = panelWatts / 1000;
+                    const panelCount = Math.ceil(requiredKwKwP / panelKwP);
+                    const actualKwP = panelCount * panelKwP;
+
+                    const dailyGeneration = actualKwP * hsp * (1 - systemLosses) * inverterEff;
+                    const monthlyGeneration = dailyGeneration * 30;
+                    const coveragePercent = Math.min((monthlyGeneration / monthlyKwh) * 100, 100);
+
+                    const vatMultiplier = vatExemption ? 1.0 : 1.19; 
+                    let bom = [];
+
+                    const panelPrice = (panelWatts * 900) * vatMultiplier;
+                    bom.push({ name: "Paneles Solares Monocristalinos Tier 1", spec: `${panelWatts}Wp / Alta Eficiencia`, qty: panelCount, unitPrice: panelPrice });
+
+                    const invType = systemType === "offgrid" ? "Inversor Aislado" : systemType === "hybrid" ? "Inversor Híbrido" : "Inversor On-Grid";
+                    const invPrice = (actualKwP * 1100000) * vatMultiplier;
+                    bom.push({ name: `${invType} CREG 174`, spec: `${actualKwP.toFixed(1)} kW / MPPT Dual`, qty: 1, unitPrice: invPrice });
+
+                    const railMeters = Math.ceil(panelCount * 2.2);
+                    bom.push({ name: "Rieles de Aluminio Anodizado", spec: "Tramo estructural 2.1m", qty: Math.ceil(railMeters / 2.1), unitPrice: 85000 });
+                    bom.push({ name: "Grapas y Conectores Aluminio", spec: "Mid/End Clamps Inox", qty: panelCount * 4, unitPrice: 8500 });
+                    bom.push({ name: "Soportes y Anclajes", spec: "Estructura Teja/Placa", qty: Math.ceil(panelCount * 2.5), unitPrice: 15000 });
+
+                    bom.push({ name: "Cable Solar DC 6mm²", spec: "Resistente UV / Fotovoltaico", qty: dcDistanceMeters * 2, unitPrice: 7800 });
+                    bom.push({ name: "Conectores MC4 IP67", spec: "1000V DC High Reliability", qty: Math.ceil(panelCount / 2) + 2, unitPrice: 12000 });
+                    bom.push({ name: "Cable THHN/THWN-2 AC", spec: "Conductor Cobre AC", qty: acDistanceMeters * 3, unitPrice: 6500 });
+
+                    bom.push({ name: "Seccionador DC LOTO RETIE", spec: "Corte en carga 1000V DC", qty: 1, unitPrice: 280000 });
+                    bom.push({ name: "Protección DPS DC + Fusibles", spec: "DPS II 1000V + Fusibles gPV", qty: 1, unitPrice: 320000 });
+                    bom.push({ name: "Tablero Envolvente DC", spec: "Caja Policarbonato IP65", qty: 1, unitPrice: 150000 });
+                    bom.push({ name: "Breaker AC + DPS AC RETIE", spec: "Interruptor Termomagnético + DPS", qty: 1, unitPrice: 290000 });
+                    bom.push({ name: "Tablero AC RETIE", spec: "Gabinete Metálico / PVC", qty: 1, unitPrice: 180000 });
+
+                    bom.push({ name: "Cable Cobre Desnudo 8 AWG", spec: "Puesta a tierra estructuras", qty: groundDistanceMeters, unitPrice: 8200 });
+                    bom.push({ name: "Sistema Puesta a Tierra (SPT)", spec: "Varilla Copperweld 5/8'' x 2.4m", qty: 1, unitPrice: 165000 });
+
+                    if (systemType === "hybrid" || systemType === "offgrid") {
+                        const autonomyDays = parseFloat(document.getElementById("autonomyDaysInput").value) || 1;
+                        const batteryKwhNeeded = (dailyKwhNeeded * autonomyDays) / 0.8;
+                        const batteryQty = Math.ceil(batteryKwhNeeded / 5.12);
+                        bom.push({ name: "Batería Litio LiFePO4", spec: "5.12 kWh / 48V Rack", qty: batteryQty, unitPrice: 6500000 });
+                    }
+
+                    if (systemType === "zeroexport") {
+                        bom.push({ name: "Smart Meter / Limitador", spec: "RS485 Modbus con CTs", qty: 1, unitPrice: 850000 });
+                    } else if (systemType === "ongrid") {
+                        bom.push({ name: "Medidor Bidireccional CREG", spec: "Homologado OR / Clase 1", qty: 1, unitPrice: 1200000 });
+                    }
+
+                    const hardwareSubtotal = bom.reduce((acc, item) => acc + (item.qty * item.unitPrice), 0);
+
+                    const laborCost = hardwareSubtotal * laborPercent;
+                    const engineeringCost = hardwareSubtotal * engPercent;
+
+                    bom.push({ name: "Mano de Obra E Instalación Especializada", spec: "Montaje mecánico y electricista", qty: 1, unitPrice: laborCost });
+                    bom.push({ name: "Ingeniería, Trámites OR & Certificación RETIE", spec: "Diseño, inspección y aprobación", qty: 1, unitPrice: engineeringCost });
+
+                    const totalInvestment = hardwareSubtotal + laborCost + engineeringCost;
+
+                    const annualDeductionTotal = incomeDeduction ? (totalInvestment * 0.50) : 0;
+                    const annualDeductionPerYear = annualDeductionTotal / 5; 
+                    const annualTaxSavingsPerYear = annualDeductionPerYear * taxRate;
+
+                    let cashFlow = [];
+                    let cumulative = -totalInvestment;
+                    let paybackYear = 0;
+                    let vpn = -totalInvestment;
+
+                    for (let yr = 1; yr <= 20; yr++) {
+                        const yrInflation = Math.pow(1 + inflation, yr - 1);
+                        const yrDegradation = Math.pow(1 - pvDegradation, yr - 1);
+                        
+                        const genThisYearKwh = (monthlyGeneration * 12) * yrDegradation;
+                        const energySavingsYr = Math.min(genThisYearKwh, monthlyKwh * 12) * (rate * yrInflation);
+                        
+                        let surplusSavingsYr = 0;
+                        if (genThisYearKwh > (monthlyKwh * 12) && systemType === "ongrid") {
+                            const surplusKwh = genThisYearKwh - (monthlyKwh * 12);
+                            surplusSavingsYr = surplusKwh * (cgCost * yrInflation);
+                        }
+
+                        const taxBenefitYr = (yr <= 5) ? annualTaxSavingsPerYear : 0;
+                        let opexYr = (totalInvestment * 0.01) * yrInflation;
+
+                        const netFlow = energySavingsYr + surplusSavingsYr + taxBenefitYr - opexYr;
+                        cumulative += netFlow;
+
+                        vpn += netFlow / Math.pow(1 + wacc, yr);
+
+                        if (cumulative >= 0 && paybackYear === 0) {
+                            paybackYear = yr;
+                        }
+
+                        cashFlow.push({
+                            year: yr,
+                            energySavings: energySavingsYr + surplusSavingsYr,
+                            taxBenefit: taxBenefitYr,
+                            opex: opexYr,
+                            netFlow: netFlow,
+                            cumulative: cumulative
+                        });
+                    }
+
+                    state = {
+                        systemSizeKw: actualKwP,
+                        panelCount,
+                        monthlyGen: monthlyGeneration,
+                        totalCost: totalInvestment,
+                        paybackYears: paybackYear || 20,
+                        vpn: vpn,
+                        coveragePercent,
+                        bom,
+                        cashFlow
+                    };
+
+                    this.renderUI();
+                },
+
+                renderUI: function () {
+                    document.getElementById("systemSizeKw").innerText = `${state.systemSizeKw.toFixed(2)} kWp`;
+                    document.getElementById("panelCountText").innerText = `${state.panelCount} Paneles de ${document.getElementById("panelWattageInput").value}W`;
+                    document.getElementById("monthlyGenerationKwh").innerText = `${Math.round(state.monthlyGen)} kWh/mes`;
+                    document.getElementById("coveragePercentText").innerText = `${Math.round(state.coveragePercent)}% Cobertura`;
+                    document.getElementById("totalInvestmentCost").innerText = formatCOP(state.totalCost);
+                    document.getElementById("paybackYearsText").innerText = `${state.paybackYears} Años`;
+                    document.getElementById("vanText").innerText = `VPN: ${formatCOP(state.vpn)}`;
+
+                    const bomTbody = document.getElementById("bomTableBody");
+                    bomTbody.innerHTML = state.bom.map(item => `
+                        <tr class="hover:bg-slate-900/60 transition">
+                            <td class="p-3 font-semibold text-white">${item.name}</td>
+                            <td class="p-3 text-slate-400">${item.spec}</td>
+                            <td class="p-3 text-center font-bold text-amber-400">${typeof item.qty === 'number' && !Number.isInteger(item.qty) ? item.qty.toFixed(1) : item.qty}</td>
+                            <td class="p-3 text-right font-mono">${formatCOP(item.unitPrice)}</td>
+                            <td class="p-3 text-right font-bold text-emerald-400 font-mono">${formatCOP(item.qty * item.unitPrice)}</td>
+                        </tr>
+                    `).join("");
+                    document.getElementById("bomTotalText").innerText = formatCOP(state.totalCost);
+
+                    const finTbody = document.getElementById("financeTableBody");
+                    finTbody.innerHTML = state.cashFlow.map(row => `
+                        <tr class="${row.cumulative >= 0 ? 'bg-emerald-500/10' : ''} hover:bg-slate-900/60 transition">
+                            <td class="p-3 font-bold text-white">Año ${row.year}</td>
+                            <td class="p-3 text-emerald-400">${formatCOP(row.energySavings)}</td>
+                            <td class="p-3 text-sky-400">${formatCOP(row.taxBenefit)}</td>
+                            <td class="p-3 text-rose-400">-${formatCOP(row.opex)}</td>
+                            <td class="p-3 text-right font-bold text-white">${formatCOP(row.netFlow)}</td>
+                            <td class="p-3 text-right font-bold ${row.cumulative >= 0 ? 'text-emerald-400' : 'text-slate-400'}">${formatCOP(row.cumulative)}</td>
+                        </tr>
+                    `).join("");
+
+                    this.renderVisualDiagram();
+                    this.renderSingleLineDiagram();
+                    this.renderFinanceChart();
+                },
+
+                renderFinanceChart: function () {
+                    const ctx = document.getElementById('financeChart').getContext('2d');
+                    if (chartInstance) chartInstance.destroy();
+
+                    const labels = state.cashFlow.map(c => `Año ${c.year}`);
+                    const netFlows = state.cashFlow.map(c => c.netFlow);
+                    const cumulatives = state.cashFlow.map(c => c.cumulative);
+
+                    chartInstance = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [
+                                {
+                                    label: 'Flujo Acumulado (COP)',
+                                    data: cumulatives,
+                                    type: 'line',
+                                    borderColor: '#10b981',
+                                    borderWidth: 3,
+                                    fill: false,
+                                    tension: 0.3,
+                                    pointRadius: 3
+                                },
+                                {
+                                    label: 'Flujo Neto Anual (COP)',
+                                    data: netFlows,
+                                    backgroundColor: 'rgba(56, 189, 248, 0.4)',
+                                    borderColor: '#38bdf8',
+                                    borderWidth: 1,
+                                    borderRadius: 4
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { labels: { color: '#94a3b8', font: { size: 11 } } },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            return `${context.dataset.label}: ${new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(context.raw)}`;
+                                        }
+                                    }
+                                }
+                            },
+                            scales: {
+                                x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                                y: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } }
+                            }
+                        }
+                    });
+                },
+
+                renderVisualDiagram: function () {
+                    const svg = document.getElementById("visualDiagramSvg");
+                    const systemType = document.getElementById("systemTypeSelect").value;
+                    const hasZeroExport = systemType === "zeroexport";
+                    const hasBatteries = systemType === "hybrid" || systemType === "offgrid";
+
+                    let markup = `
+                        <g transform="translate(50, 90)">
+                            <rect x="0" y="0" width="130" height="130" fill="#020617" stroke="#10b981" stroke-width="2" rx="12"/>
+                            <path d="M 0 43 H 130 M 0 86 H 130 M 43 0 V 130 M 86 0 V 130" stroke="#1e293b" stroke-width="2"/>
+                            <text x="65" y="-12" fill="#10b981" font-size="11" font-weight="700" text-anchor="middle">1. ARREGLO FV</text>
+                            <text x="65" y="70" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">${state.panelCount} PANELES</text>
+                        </g>
+                        <path d="M 180 155 H 270" stroke="#ef4444" stroke-width="3" stroke-dasharray="6 4" fill="none"/>
+                        <g transform="translate(270, 110)">
+                            <rect x="0" y="0" width="80" height="90" fill="#0f172a" stroke="#475569" stroke-width="1.5" rx="8"/>
+                            <text x="40" y="40" fill="#94a3b8" font-size="9" text-anchor="middle">PROTECCIÓN</text>
+                            <text x="40" y="55" fill="#ef4444" font-size="10" font-weight="700" text-anchor="middle">DC / DPS</text>
+                        </g>
+                        <path d="M 350 155 H 420" stroke="#ef4444" stroke-width="3" fill="none"/>
+                        <g transform="translate(420, 85)">
+                            <rect x="0" y="0" width="140" height="140" fill="#020617" stroke="#38bdf8" stroke-width="2" rx="12"/>
+                            <text x="70" y="28" fill="#38bdf8" font-size="11" font-weight="700" text-anchor="middle">2. INVERSOR CREG</text>
+                            <path d="M 30 90 L 50 60 L 70 90" stroke="#ef4444" stroke-width="2" fill="none"/>
+                            <text x="40" y="110" fill="#ef4444" font-size="9" font-weight="600">DC</text>
+                            <path d="M 80 75 Q 90 65 100 75 T 120 75" stroke="#38bdf8" stroke-width="2" fill="none"/>
+                            <text x="95" y="110" fill="#38bdf8" font-size="9" font-weight="600">AC</text>
+                        </g>
+                    `;
+
+                    if (hasBatteries) {
+                        markup += `
+                            <path d="M 490 225 V 265 H 350" stroke="#10b981" stroke-width="3" fill="none"/>
+                            <g transform="translate(230, 235)">
+                                <rect x="0" y="0" width="120" height="60" fill="#020617" stroke="#10b981" stroke-width="2" rx="8"/>
+                                <text x="60" y="35" fill="#34d399" font-size="10" font-weight="700" text-anchor="middle">BANCO BATERÍAS</text>
+                            </g>
+                        `;
+                    }
+
+                    markup += `
+                        <path d="M 560 155 H 630" stroke="#38bdf8" stroke-width="3" fill="none"/>
+                        <g transform="translate(630, 95)">
+                            <rect x="0" y="0" width="100" height="120" fill="#0f172a" stroke="#cbd5e1" stroke-width="1.5" rx="8"/>
+                            <text x="50" y="28" fill="#ffffff" font-size="10" font-weight="700" text-anchor="middle">3. TABLERO</text>
+                            <text x="50" y="42" fill="#ffffff" font-size="10" font-weight="700" text-anchor="middle">AC / RETIE</text>
+                            <circle cx="50" cy="78" r="16" fill="#020617" stroke="#38bdf8" stroke-width="2"/>
+                            <text x="50" y="82" fill="#38bdf8" font-size="8" font-weight="700" text-anchor="middle">CARGAS</text>
+                        </g>
+                    `;
+
+                    if (hasZeroExport) {
+                        markup += `
+                            <path d="M 730 155 H 780" stroke="#f59e0b" stroke-width="3" fill="none"/>
+                            <g transform="translate(780, 95)">
+                                <rect x="0" y="0" width="100" height="120" fill="#020617" stroke="#f59e0b" stroke-width="2" rx="8"/>
+                                <text x="50" y="28" fill="#fbbf24" font-size="9" font-weight="700" text-anchor="middle">LIMITADOR</text>
+                                <text x="50" y="42" fill="#94a3b8" font-size="8" text-anchor="middle">Smart Meter</text>
+                                <circle cx="50" cy="78" r="16" fill="#0f172a" stroke="#f59e0b" stroke-width="2"/>
+                                <text x="50" y="82" fill="#38bdf8" font-size="8" font-weight="700" text-anchor="middle">RED OR</text>
+                            </g>
+                        `;
+                    } else if (systemType === "ongrid") {
+                        markup += `
+                            <path d="M 730 155 H 780" stroke="#10b981" stroke-width="3" fill="none"/>
+                            <g transform="translate(780, 95)">
+                                <rect x="0" y="0" width="100" height="120" fill="#020617" stroke="#10b981" stroke-width="2" rx="8"/>
+                                <text x="50" y="28" fill="#34d399" font-size="9" font-weight="700" text-anchor="middle">MEDIDOR</text>
+                                <text x="50" y="42" fill="#94a3b8" font-size="8" text-anchor="middle">Bidireccional</text>
+                                <circle cx="50" cy="78" r="16" fill="#0f172a" stroke="#10b981" stroke-width="2"/>
+                                <text x="50" y="82" fill="#34d399" font-size="8" font-weight="700" text-anchor="middle">INYECCIÓN</text>
+                            </g>
+                        `;
+                    }
+
+                    svg.innerHTML = markup;
+                },
+
+                renderSingleLineDiagram: function () {
+                    const svg = document.getElementById("singleLineDiagramSvg");
+                    let markup = `
+                        <g transform="translate(80, 80)">
+                            <circle cx="30" cy="30" r="25" fill="#020617" stroke="#f59e0b" stroke-width="2"/>
+                            <text x="30" y="34" fill="#f59e0b" font-size="10" font-weight="bold" text-anchor="middle">G_FV</text>
+                            <text x="30" y="-8" fill="#ffffff" font-size="10" text-anchor="middle">Generador FV (${state.systemSizeKw.toFixed(2)} kWp)</text>
+                        </g>
+                        <path d="M 110 110 H 180" stroke="#ffffff" stroke-width="2"/>
+
+                        <g transform="translate(180, 95)">
+                            <rect x="0" y="0" width="40" height="30" fill="#0f172a" stroke="#ef4444" stroke-width="2"/>
+                            <text x="20" y="18" fill="#ef4444" font-size="8" font-weight="bold" text-anchor="middle">LOTO</text>
+                        </g>
+                        <path d="M 220 110 H 280" stroke="#ffffff" stroke-width="2"/>
+
+                        <g transform="translate(280, 80)">
+                            <rect x="0" y="0" width="50" height="60" fill="#0f172a" stroke="#ffffff" stroke-width="1"/>
+                            <text x="25" y="25" fill="#ffffff" font-size="8" text-anchor="middle">DPS DC</text>
+                            <text x="25" y="45" fill="#ffffff" font-size="8" text-anchor="middle">Fusibles</text>
+                        </g>
+                        <path d="M 330 110 H 400" stroke="#ffffff" stroke-width="2"/>
+
+                        <g transform="translate(400, 75)">
+                            <rect x="0" y="0" width="70" height="70" fill="#020617" stroke="#38bdf8" stroke-width="2"/>
+                            <text x="35" y="40" fill="#38bdf8" font-size="10" font-weight="bold" text-anchor="middle">INV/CC-CA</text>
+                        </g>
+                        <path d="M 470 110 H 540" stroke="#ffffff" stroke-width="2"/>
+
+                        <g transform="translate(540, 80)">
+                            <rect x="0" y="0" width="60" height="60" fill="#0f172a" stroke="#ffffff" stroke-width="1"/>
+                            <text x="30" y="25" fill="#ffffff" font-size="8" text-anchor="middle">TM AC</text>
+                            <text x="30" y="45" fill="#ffffff" font-size="8" text-anchor="middle">DPS AC</text>
+                        </g>
+                        <path d="M 600 110 H 680" stroke="#ffffff" stroke-width="2"/>
+
+                        <line x1="680" y1="50" x2="680" y2="250" stroke="#38bdf8" stroke-width="5"/>
+                        <text x="690" y="45" fill="#38bdf8" font-size="10" font-weight="bold">Barraje Principal AC</text>
+
+                        <g transform="translate(400, 240)">
+                            <line x1="30" y1="0" x2="30" y2="40" stroke="#10b981" stroke-width="3"/>
+                            <line x1="10" y1="40" x2="50" y2="40" stroke="#10b981" stroke-width="3"/>
+                            <line x1="18" y1="48" x2="42" y2="48" stroke="#10b981" stroke-width="3"/>
+                            <line x1="24" y1="56" x2="36" y2="56" stroke="#10b981" stroke-width="3"/>
+                            <text x="30" y="72" fill="#10b981" font-size="9" font-weight="bold" text-anchor="middle">SPT / RETIE</text>
+                        </g>
+                        <path d="M 200 125 V 240 H 430" stroke="#10b981" stroke-width="1.5" stroke-dasharray="4 2" fill="none"/>
+                        <path d="M 430 145 V 240" stroke="#10b981" stroke-width="1.5" stroke-dasharray="4 2" fill="none"/>
+                    `;
+                    svg.innerHTML = markup;
+                },
+
+                switchTab: function (tabId) {
+                    document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+                    document.querySelectorAll('[id^="tabBtn-"]').forEach(el => {
+                        el.classList.remove('text-brand-500', 'bg-brand-500/10', 'border', 'border-brand-500/20');
+                        el.classList.add('text-slate-400');
+                    });
+
+                    document.getElementById(`tabContent-${tabId}`).classList.remove('hidden');
+                    const activeBtn = document.getElementById(`tabBtn-${tabId}`);
+                    activeBtn.classList.add('text-brand-500', 'bg-brand-500/10', 'border', 'border-brand-500/20');
+                    activeBtn.classList.remove('text-slate-400');
+
+                    if (tabId === 'finance') {
+                        setTimeout(() => this.renderFinanceChart(), 50);
+                    }
+                },
+
+                saveToStorage: function () {
+                    const data = {
+                        dept: document.getElementById("departmentSelect").value,
+                        kwh: document.getElementById("monthlyKwhInput").value,
+                        rate: document.getElementById("electricityRateInput").value,
+                        inflation: document.getElementById("inflationInput").value,
+                        pvDegradation: document.getElementById("pvDegradationInput").value,
+                        wacc: document.getElementById("waccInput").value,
+                        taxRate: document.getElementById("taxRateInput").value,
+                        labor: document.getElementById("laborPercentInput").value,
+                        eng: document.getElementById("engineeringPercentInput").value,
+                        vatExemption: document.getElementById("vatExemptionCheck").checked,
+                        incomeDeduction: document.getElementById("incomeDeductionCheck").checked,
+                        timestamp: new Date().toISOString()
+                    };
+                    localStorage.setItem("solar_project_enterprise", JSON.stringify(data));
+                    alert("¡Proyecto guardado localmente en el dispositivo!");
+                },
+
+                exportJSON: function () {
+                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2));
+                    const dlAnchor = document.createElement('a');
+                    dlAnchor.setAttribute("href", dataStr);
+                    dlAnchor.setAttribute("download", `Solar_Enterprise_Project_${Date.now()}.json`);
+                    dlAnchor.click();
+                },
+
+                importJSON: function (event) {
+                    const fileReader = new FileReader();
+                    fileReader.onload = function (e) {
+                        try {
+                            JSON.parse(e.target.result);
+                            alert("Archivo cargado correctamente.");
+                            SolarApp.calculate();
+                        } catch (err) {
+                            alert("Error al cargar el archivo JSON.");
+                        }
+                    };
+                    fileReader.readAsText(event.target.files[0]);
+                }
+            };
+        })();
+
+        document.addEventListener("DOMContentLoaded", () => {
+            SolarApp.init();
+
+            // Registro de Service Worker para PWA / APK Offline
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(() => console.log('Service Worker registrado correctamente.'))
+                    .catch(err => console.warn('Error al registrar Service Worker:', err));
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+{
+  "short_name": "HeliosPro",
+  "name": "Helios Pro - Dimensionador Solar Fotovoltaico",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "./index.html",
+  "background_color": "#020617",
+  "theme_color": "#0f172a",
+  "display": "standalone",
+  "orientation": "portrait",
+  "description": "Calculadora de dimensionamiento e ingeniería solar fotovoltaica para Colombia (RETIE / CREG 174)."
+}
