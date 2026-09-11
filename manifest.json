@@ -18,5 +18,6 @@
   "theme_color": "#0f172a",
   "display": "standalone",
   "orientation": "portrait",
-  "description": "Calculadora de dimensionamiento e ingeniería solar fotovoltaica para Colombia (RETIE / CREG 174)."
+  "description": "Calculadora de dimensionamiento e ingeniería solar fotovoltaica para Colombia (RETIE / CREG 174).",
+  "id": "Heliospro"
 }
