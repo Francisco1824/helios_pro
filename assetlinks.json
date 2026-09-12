@@ -2,7 +2,7 @@
       "relation": ["delegate_permission/common.handle_all_urls"],
       "target": {
         "namespace": "android_app",
-        "package_name": "io.github.francisco1824.twa",
+        "package_name": "app.heliospro.twa",
         "sha256_cert_fingerprints": ["BE:AA:E3:7A:1A:C0:E0:25:C5:44:3C:EB:AF:90:26:E3:87:36:1F:0B:24:E2:3F:D8:49:23:23:B2:AE:D6:0F:4A"]
       }
     }]
