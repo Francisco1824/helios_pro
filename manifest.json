@@ -16,7 +16,7 @@
   "screenshots": [
     {
       "src": "images/screenshot-wide.png",
-      "sizes": "1366x768",
+      "sizes": "1366x720",
       "type": "image/png",
       "form_factor": "wide",
       "label": "Dashboard principal de Helios Pro - Dimensionamiento Solar"
