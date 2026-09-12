@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "app.heliospro.twa",
+        "sha256_cert_fingerprints": ["64:73:83:92:7E:31:D9:61:3E:8C:E8:5B:20:6C:D5:45:29:75:06:18:6F:99:CF:A3:73:B2:30:0D:81:32:17:C8"]
+      }
+}]
